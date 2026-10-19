@@ -73,7 +73,7 @@ def unmount_block_device_path(system_id: str, block_device_id: int) -> str:
 
 def format_partition_path(system_id: str, block_device_id: int, partition_id: int) -> str:
     # MAAS partition-scoped ops use a ?op=<name> query parameter, not a path
-    # suffix. The literal URL in maasapi.md §PartitionHandler_format is
+    # suffix. The literal URL in docs/reference/maasapi.md §PartitionHandler_format is
     # misleading on this point — see memory maas-partition-ops-query-param.
     return f"/api/2.0/nodes/{system_id}/blockdevices/{block_device_id}/partitions/{partition_id}"
 

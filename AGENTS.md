@@ -60,9 +60,10 @@ The project uses `uv` (a `uv.lock` is checked in). Do not introduce a
 
 ## Things to know
 
-- The `docs/superpowers/` directory is the project's own plans/specs
-  archive (markdown, dated 2026-07-* and 2026-09-*). Unrelated to
-  ECC superpowers tooling in `.claude/`.
+- The `docs/plans/` and `docs/specs/` directories are the project's own
+  implementation plans and design specs archive (markdown, dated
+  2026-07-* and 2026-09-*). Unrelated to the ECC superpowers tooling
+  in `.claude/`.
 - `scripts/42-maas-storage-layout.sh` is project-owned and is invoked
   manually on MAAS hosts; it is not a CI script.
 - The `Dockerfile` (Python 3.11-slim, uv 0.8 pinned) and

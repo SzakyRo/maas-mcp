@@ -1,6 +1,6 @@
 """Regression tests for v0.10.0 doc-audit behavior changes.
 
-Each test pins a fix against the vendored MAAS API doc (maasapi.md):
+Each test pins a fix against the vendored MAAS API doc (docs/reference/maasapi.md):
 - create_partition: size optional (omitted = all available space), uuid param
 - deploy_machine: user_data base64-encoded before the wire
 - release_machine: force param forwarded

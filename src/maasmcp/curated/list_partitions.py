@@ -15,7 +15,7 @@ from maasmcp.maas.errors import MCPUpstreamError
 
 # MAAS 500s with this exact body when the block device has no PartitionTable
 # row at all (fresh unused disks, raw whole-disk RAID members). Undocumented
-# upstream defect — maasapi.md lists only 200/404 for this endpoint — so we
+# upstream defect — docs/reference/maasapi.md lists only 200/404 for this endpoint — so we
 # match the verbatim phrase rather than the status code alone.
 _NO_PARTITION_TABLE_PHRASE = "PartitionTable matching query does not exist"
 

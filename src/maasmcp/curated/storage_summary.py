@@ -60,7 +60,7 @@ def _count_lvs_in_vg(vg: dict[str, Any]) -> int:
     """Best-effort extraction of LV count from a VG dict.
 
     Tries ``logical_volumes`` first (MAAS docs terminology at
-    maasapi.md:12311), then ``volumes``. Returns 0 on neither match
+    docs/reference/maasapi.md:12311), then ``volumes``. Returns 0 on neither match
     (the agent still sees correct RAID/VG counts).
     """
     for key in ("logical_volumes", "volumes"):

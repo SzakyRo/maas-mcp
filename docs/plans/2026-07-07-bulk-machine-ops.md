@@ -12,7 +12,7 @@
 
 These apply to every task. Re-read before each task's review.
 
-- **MAAS authority:** Every endpoint shape, body field name, and response contract comes from `maasapi.md` at the project root (the user's authoritative MAAS reference). When the spec says "POST X with body Y", that must be exactly what `maasapi.md` documents for that endpoint.
+- **MAAS authority:** Every endpoint shape, body field name, and response contract comes from `docs/reference/maasapi.md` at the project root (the user's authoritative MAAS reference). When the spec says "POST X with body Y", that must be exactly what `docs/reference/maasapi.md` documents for that endpoint.
 - **`MaasClient.post()` signature (v0.1.1):** `async def post(self, path: str, *, json: dict[str, Any] | None = None) -> Any`. The kwarg name is `json=`, NOT `data=`. Internally (commit `5ad4a1a`) the client converts the dict to multipart/form-data so MAAS accepts it. All new tools MUST call `client.post(path, json=...)` with a plain dict — never `data=`.
 - **Test fixture pattern (v0.1.1):** Tests that build a `MaasClient` directly via `MaasmcpConfig.load(None)` must first seed env vars because `tests/conftest.py` autouses `_isolate_settings_env` and `MaasmcpConfig` requires `maas`+`server` sub-configs:
   ```python
@@ -33,7 +33,7 @@ These apply to every task. Re-read before each task's review.
   - On `"ok"`: `"result": <MAAS response object>` (whatever MAAS returned for that host; may be `None`).
   - On `"error"`: `"error": str` — a stringified exception message.
   - The verb never raises on partial failure. The first system_id is at index 0; order matches the input order.
-- **List filter kwargs:** All three new kwargs (`zone`, `cpu_count_min`, `memory_min`) are optional. MAAS supports `zone`, `cpu_count` (already a minimum in MAAS semantics), and `mem` (minimum RAM in MiB, string) as server-side query params on `GET /api/2.0/machines/` per `maasapi.md` lines 6141–6153. All three filter server-side. Existing callers pass nothing and get identical behaviour. No kwargs is rejected.
+- **List filter kwargs:** All three new kwargs (`zone`, `cpu_count_min`, `memory_min`) are optional. MAAS supports `zone`, `cpu_count` (already a minimum in MAAS semantics), and `mem` (minimum RAM in MiB, string) as server-side query params on `GET /api/2.0/machines/` per `docs/reference/maasapi.md` lines 6141–6153. All three filter server-side. Existing callers pass nothing and get identical behaviour. No kwargs is rejected.
 - **Zone semantics:** `zone=<name>` is passed verbatim as the `zone` MAAS query param (exact match on the zone name, case-sensitive per MAAS).
 - **Numeric filter semantics:** `cpu_count_min` is mapped to MAAS's `cpu_count` query param (MAAS docs: "Only nodes with the specified minimum number of CPUs will be included"). `memory_min` is mapped to MAAS's `mem` query param as a string (MAAS docs: "Only nodes with the specified minimum amount of RAM (in MiB) will be included"). The `_min` suffix on the kwarg name signals the minimum semantics to the agent without them needing to learn MAAS's quirky param names; internally we map `cpu_count_min=N` → `params["cpu_count"]=N` and `memory_min=N` → `params["mem"]=str(N)`.
 - **Concurrency:** `bulk_tag_machines`, `bulk_untag_machines`, `bulk_power_control_machines` use `asyncio.gather(*tasks, return_exceptions=True)` after acquiring the semaphore per task. Each task wraps a single MAAS POST and catches all exceptions (`httpx.HTTPError`, `ValueError`) into the per-id error dict.
@@ -56,7 +56,7 @@ These apply to every task. Re-read before each task's review.
 - `tests/unit/curated/test_bulk_untag_machines.py` (new) — respx unit tests.
 - `tests/unit/curated/test_bulk_power_control_machines.py` (new) — respx unit tests.
 - `tests/unit/curated/test_list_machines_filters.py` (new) — Filter unit tests.
-- `tests/integration/test_bulk_operations_e2e.py` (new) — One e2e test gated by `@pytest.mark.e2e` and `pytest.mark.skipif`.
+- `tests/e2e/test_bulk_operations.py` (new) — One e2e test gated by `@pytest.mark.e2e` and `pytest.mark.skipif`.
 - `src/maasmcp/__init__.py` (modify) — `__version__ = "0.2.0"`.
 - `pyproject.toml` (modify) — `version = "0.2.0"`.
 - `CHANGELOG.md` (modify) — Add `0.2.0` section.
@@ -872,7 +872,7 @@ git commit -m "feat(curated): add bulk_power_control_machines fan-out"
 
 **Behaviour:**
 - Add three optional kwargs: `zone: str | None = None`, `cpu_count_min: int | None = None`, `memory_min: int | None = None`.
-- All three map to MAAS's server-side query params: `zone=<name>`, `cpu_count=<N>`, `mem=<N-as-string>`. See Global Constraints for the maasapi.md references.
+- All three map to MAAS's server-side query params: `zone=<name>`, `cpu_count=<N>`, `mem=<N-as-string>`. See Global Constraints for the docs/reference/maasapi.md references.
 - All kwargs default to `None` (no filter). Existing callers are unaffected.
 
 - [ ] **Step 1: Write the failing test**
@@ -1051,12 +1051,12 @@ git commit -m "feat(curated): add zone/cpu_count_min/memory_min filters to list_
 ## Task 6: End-to-end integration test (gated)
 
 **Files:**
-- Create: `tests/integration/test_bulk_operations_e2e.py`
+- Create: `tests/e2e/test_bulk_operations.py`
 
 - [ ] **Step 1: Write the e2e test**
 
 ```python
-# tests/integration/test_bulk_operations_e2e.py
+# tests/e2e/test_bulk_operations.py
 """Bulk operations against a real MAAS. Gated on MAASMCP_E2E_MAAS_URL env var."""
 
 from __future__ import annotations
@@ -1109,13 +1109,13 @@ async def test_bulk_tag_round_trip(maas_client: MaasClient) -> None:
 
 - [ ] **Step 2: Verify the test is properly skipped without env var**
 
-Run: `pytest tests/integration/test_bulk_operations_e2e.py -v`
+Run: `pytest tests/e2e/test_bulk_operations.py -v`
 Expected: 1 skipped with reason "MAASMCP_E2E_MAAS_URL not set".
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add tests/integration/test_bulk_operations_e2e.py
+git add tests/e2e/test_bulk_operations.py
 git commit -m "test(e2e): add gated bulk tag/untag round-trip test"
 ```
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+, FastMCP (mcp SDK), pydantic, pytest + pytest-asyncio (auto mode) + respx for HTTP mocking.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-hostname-addressing-design.md`
+**Spec:** `docs/specs/2026-09-03-hostname-addressing-design.md`
 
 ## Global Constraints
 

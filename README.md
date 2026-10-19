@@ -46,7 +46,7 @@ MAAS is the de-facto bare-metal provisioning system for Linux fleets. It has a c
 
 `maasmcp` solves these by:
 
-- **Hand-writing** every tool with Pydantic-typed parameters and `Field(description=…)` docs taken from MAAS's own API documentation (vendored in `maasapi.md`), so the LLM sees the same description a human would.
+- **Hand-writing** every tool with Pydantic-typed parameters and `Field(description=…)` docs taken from MAAS's own API documentation (vendored in `docs/reference/maasapi.md`), so the LLM sees the same description a human would.
 - **Curating** high-level verbs that handle the messy parts — VLAN-vs-VID translation, auto-pagination, hostname-to-system_id resolution, partial-failure aggregation on bulk ops.
 - **Gating** every destructive write behind a `confirm: bool = False` default. Calling `delete_block_device(system_id, id)` without `confirm=True` raises `ValueError` *before* any MAAS call. Use `get_block_device` to verify the target first.
 
@@ -432,7 +432,7 @@ curl -fsS http://localhost:8765/healthz
 
 ### Adding or changing a tool against a newer MAAS
 
-All tools are hand-written. To support a newer MAAS API version, consult the vendored spec (`maasapi.md`) or a live `/api/2.0/describe/`, then add or update the tool class under `src/maasmcp/curated/`, register it in `curated/_common.py`, and make sure `src/maasmcp/curated/_catalog.py` maps its name to the right domain and annotations. Document the change in `CHANGELOG.md`, bump the package version, run the full suite, then cut a release tag.
+All tools are hand-written. To support a newer MAAS API version, consult the vendored spec (`docs/reference/maasapi.md`) or a live `/api/2.0/describe/`, then add or update the tool class under `src/maasmcp/curated/`, register it in `curated/_common.py`, and make sure `src/maasmcp/curated/_catalog.py` maps its name to the right domain and annotations. Document the change in `CHANGELOG.md`, bump the package version, run the full suite, then cut a release tag.
 
 ### Tests
 
@@ -471,7 +471,7 @@ tests/
 └── e2e/                    # live MAAS, gated by marker
 ```
 
-The full design rationale lives at `docs/superpowers/specs/2026-07-07-maasmcp-design.md`. Implementation plans for each release are at `docs/superpowers/plans/2026-07-07-*.md`. The vendored copy of the MAAS API v2 documentation (the authoritative reference for endpoint semantics) is at `maasapi.md`.
+The full design rationale lives at `docs/specs/2026-07-07-maasmcp-design.md`. Implementation plans for each release are at `docs/plans/2026-07-07-*.md`. The vendored copy of the MAAS API v2 documentation (the authoritative reference for endpoint semantics) is at `docs/reference/maasapi.md`.
 
 ---
 

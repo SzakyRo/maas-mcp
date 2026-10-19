@@ -1,4 +1,4 @@
-# tests/integration/test_bulk_operations_e2e.py
+# tests/e2e/test_bulk_operations.py
 """Bulk operations against a real MAAS. Gated on MAASMCP_E2E_MAAS_URL env var."""
 
 from __future__ import annotations

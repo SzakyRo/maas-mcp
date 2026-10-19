@@ -3,7 +3,7 @@
 MAAS does NOT expose a clear/unset boot_disk verb — `set_boot_disk` is the
 only documented BlockDeviceHandler operation, and `MachineHandler.update`
 (PUT /api/2.0/machines/{id}/) 405s on a boot_disk field. Confirmed against
-MAAS 3.7.2 OpenAPI spec (maasapi.md §BlockDeviceHandler_set_boot_disk) and
+MAAS 3.7.2 OpenAPI spec (docs/reference/maasapi.md §BlockDeviceHandler_set_boot_disk) and
 live testing: `{"boot_disk": null}` and `{"boot_disk": 0}` both 405.
 
 Rather than fake a call, this tool surfaces the limitation as structured

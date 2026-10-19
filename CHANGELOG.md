@@ -11,7 +11,7 @@ All notable changes to maasmcp are documented here.
   `create_interface_vlan`, and `update_interface` renamed `vlan` → `vid`.
   `create_subnet`/`update_subnet` are unchanged: `vlan` remains the MAAS
   internal VLAN id, `vid` the 802.1Q VID — matching MAAS's own wire layout
-  (all VLAN endpoints are keyed by vid per maasapi.md).
+  (all VLAN endpoints are keyed by vid per docs/reference/maasapi.md).
 - `storage_summary`'s `total_size_gb` field is renamed `total_size_gib`:
   the value was always computed with a 1024³ divisor (GiB); the name now
   matches the math.
@@ -345,7 +345,7 @@ published-schema audit, test-quality pass, docs/ops verification).
   or an mcp-proxy bridge); `/readyz` bearer requirement documented;
   `pytest -m e2e --no-cov` (the coverage floor is sized for the full suite);
   `mount_block_device` added to the tool listing; the false "CI runs e2e
-  nightly" claim removed; `maasapi.md` described accurately.
+  nightly" claim removed; `docs/reference/maasapi.md` described accurately.
 - Request-log overflow regression test rewritten to script the ASGI receive
   channel (Starlette's TestClient coalesces bodies, so the previous test
   never exercised the overflow path).

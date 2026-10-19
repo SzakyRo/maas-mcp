@@ -11,7 +11,7 @@ one place (no cross-domain chatter at the verb layer).
 VLAN path notes (MAAS 3.7+)
 ---------------------------
 MAAS fabric-scopes every VLAN endpoint under
-``/api/2.0/fabrics/{fabric_id}/vlans/...`` — see maasapi.md lines
+``/api/2.0/fabrics/{fabric_id}/vlans/...`` — see docs/reference/maasapi.md lines
 11340-11483 for VlanHandler / VlansHandler. There is NO global
 ``/api/2.0/vlans/`` endpoint. The ``vid`` segment in the URL is the
 IEEE 802.1Q VLAN identifier (e.g. 79), NOT the MAAS internal primary

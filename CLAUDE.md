@@ -47,7 +47,7 @@ The same `uv sync --locked --no-dev --no-editable` recipe is what the
 - `scripts/42-maas-storage-layout.sh` — project-owned bash helper
   (NOT a CI script; invoked manually when laying out storage on a
   MAAS box).
-- `docs/superpowers/plans/` and `docs/superpowers/specs/` — this
+- `docs/plans/` and `docs/specs/` — this
   project's own planning/spec archive. The `superpowers/` name
   here is a project naming choice and is unrelated to ECC
   superpowers tooling (which lives in `.claude/`).

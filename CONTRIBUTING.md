@@ -2,7 +2,7 @@
 
 Thanks for contributing. This guide covers the workflow, conventions,
 and quality gates that PRs need to clear. For project context, see
-`README.md` and the design specs under `docs/superpowers/specs/`.
+`README.md` and the design specs under `docs/specs/`.
 
 ## Quick start
 
@@ -34,9 +34,9 @@ All four must be clean. CI will fail otherwise.
   mood in the subject (`Fix NTP regression in bulk-machine-ops`,
   not `Fixed …`).
 - Reference the relevant plan/spec in
-  `docs/superpowers/specs/<topic>.md` if one exists for the area
+  `docs/specs/<topic>.md` if one exists for the area
   you're changing. Plans live alongside specs under
-  `docs/superpowers/plans/`.
+  `docs/plans/`.
 
 ## Code style
 
@@ -94,7 +94,7 @@ internal-access check needs an update.
 - Title: a short imperative summary.
 - Body: what changed, why, and any test or UX impact.
 - Include the output of `uv run pytest` if behaviour changed.
-- Link any relevant issue or `docs/superpowers/specs/*.md`.
+- Link any relevant issue or `docs/specs/*.md`.
 
 ## Issues
 
