@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.pyre/
+
+# uv
+.uv-cache/
+uv.lock.timestamp
+
+# Tests / fixtures that should not be committed
+tests/fixtures/local/
+tests/.local.env
+
+# Secrets — never commit. .env.example IS committed as a template.
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*~
+
+# Docker / compose runtime state
+*.pid
+.docker-tmp/
+
+# Local tool state that is per-machine, not per-repo
+# (.claude/ is tracked so the team shares rules/skills/commands/agents;
+# only transient/runtime state under it is ignored.)
+.claude/ecc/.tmp/
+.claude/ecc/*.lock
+.claude/settings.local.json
+
+# Stray build/test artifacts
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Node (some hook scripts in .claude/scripts/hooks may pull deps locally)
+node_modules/

@@ -1,0 +1,11 @@
+services:
+  maasmcp:
+    build: .
+    container_name: maasmcp
+    network_mode: host
+    environment:
+      - MAASMCP_MAAS__BASE_URL=${MAASMCP_MAAS__BASE_URL}
+      - MAASMCP_MAAS__API_KEY=${MAASMCP_MAAS__API_KEY}
+      - MAASMCP_MAAS__VERIFY_TLS=${MAASMCP_MAAS__VERIFY_TLS:-true}
+      - MAASMCP_SERVER__BEARER_TOKEN=${MAASMCP_SERVER__BEARER_TOKEN}
+    restart: unless-stopped

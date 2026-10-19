@@ -1,0 +1,4 @@
+[
+  {"system_id": "abc123", "hostname": "node-1", "status": "READY"},
+  {"system_id": "def456", "hostname": "node-2", "status": "ALLOCATED"}
+]
