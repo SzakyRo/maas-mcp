@@ -23,6 +23,14 @@ _NEEDS_COMMISSION_STATUSES = frozenset({"New", "Ready"})
 # commissioning_status_name values that indicate the machine has been
 # commissioned (Title-case from MAAS 3.x).
 _COMMISSIONED_STATUSES = frozenset({"Passed", "Warning", "Skipped"})
+# Statuses that must REFUSE deploy, regardless of what a re-commission
+# would do. Deploying onto a machine in a known-bad state can corrupt the
+# install or the box — the caller must explicitly re-commission or
+# otherwise recover before retrying. MAAS Title-cases failure states, so
+# these are Title-case strings (not the integer status enum).
+_REFUSE_DEPLOY_STATUSES = frozenset(
+    {"Failed commissioning", "Failed deployment", "Failed testing", "Broken"}
+)
 
 
 class DeployMachineTool:
@@ -62,8 +70,7 @@ class DeployMachineTool:
         system_id: Annotated[
             str | None,
             Field(
-                description="MAAS system_id of the machine. "
-                "Provide this or hostname, exactly one."
+                description="MAAS system_id of the machine. Provide this or hostname, exactly one."
             ),
         ] = None,
         hostname: Annotated[
@@ -85,6 +92,7 @@ class DeployMachineTool:
             )
         # Pre-flight: ensure the machine has been commissioned.
         machine = await client.get(machine_path(system_id))
+        status = ""
         if isinstance(machine, dict):
             status = str(machine.get("status_name", ""))
             # commissioning_status_name is the Title-case string ("Passed",
@@ -116,6 +124,25 @@ class DeployMachineTool:
                         status_code=0,
                         url=machine_op_path(system_id, "op-commission"),
                     )
+                # Re-read status after the commission attempt so the refusal
+                # check below sees the post-commission state, not the stale
+                # pre-commission one.
+                status = str(result.get("status_name", ""))
+
+        # Explicit refusal: MAAS Title-case failure states ("Failed
+        # commissioning", "Failed deployment", "Broken") MUST NOT silently
+        # fall through to op-deploy. Without this, a Failed-commissioning
+        # machine skips the commission branch above (its status is not in
+        # _NEEDS_COMMISSION_STATUSES) and deploys onto a known-bad
+        # hardware state. The caller must explicitly re-commission or
+        # otherwise recover the machine before deploy will proceed.
+        if status in _REFUSE_DEPLOY_STATUSES:
+            raise MCPUpstreamError(
+                f"refusing to deploy to {system_id} (status {status!r}); "
+                "re-commission or otherwise recover the machine before retrying",
+                status_code=0,
+                url=machine_path(system_id),
+            )
 
         body: dict[str, Any] = {
             "distro_series": distro,

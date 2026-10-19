@@ -53,8 +53,7 @@ class BulkTagMachinesTool:
         system_ids: Annotated[
             list[str] | None,
             Field(
-                description="List of MAAS system_ids. Provide this or hostnames; "
-                "union if both.",
+                description="List of MAAS system_ids. Provide this or hostnames; union if both.",
                 max_length=500,
             ),
         ] = None,
@@ -77,20 +76,25 @@ class BulkTagMachinesTool:
             raise ValueError("must provide system_ids or hostnames (or both)")
         # Resolve hostnames (single fleet fetch) before the confirm gate so
         # the gate can report counts and addressing errors fail fast.
-        resolved = list(system_ids or [])
+        mapping: dict[str, str] = {}
+        missing: list[str] = []
         if hostnames:
             mapping, missing = await resolve_hostnames(client, hostnames)
-            resolved.extend(mapping.values())
-            missing_entries: list[BulkTagResult] = [
-                {
-                    "system_id": h,
-                    "status": "error",
-                    "error": f"no machine found with hostname {h!r}",
-                }
-                for h in missing
-            ]
-        else:
-            missing_entries = []
+        # dict.fromkeys preserves first-occurrence order while dropping
+        # duplicates — both for explicit system_ids (caller typed the same
+        # id twice) and for hostname-resolved ids (same hostname in two
+        # input slots, or MAAS returning duplicate hostnames in the fleet
+        # listing). Without this, gather fans out duplicate tag-update
+        # calls to the same machine.
+        resolved = list(dict.fromkeys([*(system_ids or []), *mapping.values()]))
+        missing_entries: list[BulkTagResult] = [
+            {
+                "system_id": h,
+                "status": "error",
+                "error": f"no machine found with hostname {h!r}",
+            }
+            for h in missing
+        ]
         # Validate explicitly-given system_ids (not hostname-resolved ones)
         # before the confirm gate so an invalid id surfaces its validation
         # error rather than the generic confirm-gate rejection.

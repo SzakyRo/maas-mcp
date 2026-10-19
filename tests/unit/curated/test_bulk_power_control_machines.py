@@ -216,9 +216,7 @@ async def test_bulk_power_control_both_none_raises(monkeypatch) -> None:
     maas_client.base_url = cfg.maas.base_url
     async with maas_client:
         with pytest.raises(ValueError, match="system_ids or hostnames"):
-            await BulkPowerControlMachinesTool().run(
-                maas_client, action="on", confirm=True
-            )
+            await BulkPowerControlMachinesTool().run(maas_client, action="on", confirm=True)
 
 
 @pytest.mark.asyncio
@@ -235,4 +233,53 @@ async def test_invalid_system_id_validates_before_confirm_gate(
         await BulkPowerControlMachinesTool().run(
             maas_client, system_ids=["../bad"], action="on", confirm=False
         )
+    assert not mock.calls
+
+
+@pytest.mark.asyncio
+async def test_duplicate_system_ids_collapse_to_single_call(maas_client: MaasClient) -> None:
+    """Same system_id typed twice (or a hostname mapping that collides)
+    must NOT produce two parallel op-power_on calls."""
+    with respx.mock(base_url=maas_client.base_url) as mock:  # type: ignore[attr-defined]
+        route = mock.post("/api/2.0/machines/x/op-power_on").mock(
+            return_value=Response(200, json={})
+        )
+        async with maas_client:
+            result = await BulkPowerControlMachinesTool().run(
+                maas_client, system_ids=["x", "x"], action="on", confirm=True
+            )
+    assert route.call_count == 1
+    assert len(result) == 1
+    assert result[0] == {"system_id": "x", "status": "ok", "result": None}
+
+
+@pytest.mark.asyncio
+async def test_hostname_resolved_sids_validated_before_confirm_gate(
+    monkeypatch,
+) -> None:
+    """A malformed sid returned by the fleet listing (hostnames path) must
+    surface its validation error before the confirm gate — mirroring the
+    explicit-system_ids pre-validation on the explicit path."""
+    monkeypatch.setenv("MAASMCP_MAAS__BASE_URL", "https://maas.example.com/MAAS")
+    monkeypatch.setenv("MAASMCP_MAAS__API_KEY", "k")
+    monkeypatch.setenv("MAASMCP_SERVER__BEARER_TOKEN", "unit-test-token-16")
+    cfg = MaasmcpConfig.load(None)
+    maas_client = MaasClient(cfg.maas)
+    maas_client.base_url = cfg.maas.base_url
+    with respx.mock(base_url=maas_client.base_url, assert_all_called=False) as mock:
+        # Fleet listing returns a sid that fails _SYSTEM_ID_RE validation
+        # (contains '/', which is outside [A-Za-z0-9._~-]). The explicit
+        # path rejects this immediately; the hostname-resolved path must
+        # do the same BEFORE the gate.
+        mock.get("/api/2.0/machines/", params={"limit": "200", "offset": "0"}).mock(
+            return_value=Response(200, json=[{"system_id": "a/b", "hostname": "evil"}])
+        )
+        async with maas_client:
+            with pytest.raises(ValueError, match="system_id must be 1-64"):
+                await BulkPowerControlMachinesTool().run(
+                    maas_client,
+                    hostnames=["evil"],
+                    action="on",
+                    confirm=False,  # gate must not be reached
+                )
     assert not mock.calls

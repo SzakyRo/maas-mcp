@@ -101,9 +101,9 @@ async def test_resolve_hostnames_uses_paginated_get(monkeypatch):
     with respx.mock(base_url=c.base_url, assert_all_called=False) as mock:
         # Match the first paginated page (limit=200, offset=0); paginated_get
         # walks further pages on its own. Returning a short page signals end.
-        route = mock.get(
-            "/api/2.0/machines/", params={"limit": "200", "offset": "0"}
-        ).mock(return_value=Response(200, json=[{"system_id": "s1", "hostname": "h1"}]))
+        route = mock.get("/api/2.0/machines/", params={"limit": "200", "offset": "0"}).mock(
+            return_value=Response(200, json=[{"system_id": "s1", "hostname": "h1"}])
+        )
         async with c:
             await resolve_hostnames(c, ["h1"])
     assert route.called
@@ -113,3 +113,24 @@ async def test_resolve_hostnames_empty(monkeypatch):
     c = _client(monkeypatch)
     async with c:
         assert await resolve_hostnames(c, []) == ({}, [])
+
+
+async def test_resolve_hostnames_duplicate_fleet_hostnames_first_wins(monkeypatch):
+    """A misbehaving MAAS returning two machines with the same hostname
+    must NOT silently drop the first one — first occurrence wins so bulk
+    operations reach at least one deterministic machine."""
+    c = _client(monkeypatch)
+    with respx.mock(base_url=c.base_url, assert_all_called=False) as mock:
+        mock.get("/api/2.0/machines/", params={"limit": "200", "offset": "0"}).mock(
+            return_value=Response(
+                200,
+                json=[
+                    {"system_id": "first", "hostname": "dup"},
+                    {"system_id": "second", "hostname": "dup"},
+                ],
+            )
+        )
+        async with c:
+            mapping, missing = await resolve_hostnames(c, ["dup"])
+    assert mapping == {"dup": "first"}
+    assert missing == []

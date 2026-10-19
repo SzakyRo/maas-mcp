@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
+from maasmcp.curated._machine_paths import machines_op_path
 from maasmcp.maas.client import MaasClient
 
 # Client-side status filtering on `status_name`, kept deliberately (some MAAS
@@ -78,13 +79,19 @@ class AcquireMachineTool:
                 f"no machine matches constraints: status={status!r} "
                 f"hostname={hostname!r} pool={pool!r}"
             )
+        # Deterministic selection: sort by system_id so identical inputs
+        # against the same fleet state allocate the same machine. MAAS's
+        # /machines/ listing order is not guaranteed stable across versions,
+        # so without this two Ready hosts in the same pool can be allocated
+        # in different orders on different MAAS deployments.
+        matches.sort(key=lambda m: m.get("system_id", ""))
         chosen = matches[0]
         # system_id alone pins the target; the allocate op's hostname param is
         # named `name` upstream, and passing a stray `hostname` key risks a 400.
         body: dict[str, Any] = {"system_id": chosen["system_id"]}
         if pool:
             body["pool"] = pool
-        await client.post("/api/2.0/machines/?op=allocate", json=body)
+        await client.post(machines_op_path("allocate"), json=body)
         return {
             "system_id": chosen.get("system_id"),
             "hostname": chosen.get("hostname"),

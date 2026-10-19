@@ -68,8 +68,7 @@ class BulkPowerControlMachinesTool:
         system_ids: Annotated[
             list[str] | None,
             Field(
-                description="List of MAAS system_ids. Provide this or hostnames; "
-                "union if both.",
+                description="List of MAAS system_ids. Provide this or hostnames; union if both.",
                 max_length=500,
             ),
         ] = None,
@@ -91,20 +90,31 @@ class BulkPowerControlMachinesTool:
         if system_ids is None and hostnames is None:
             raise ValueError("must provide system_ids or hostnames (or both)")
         # Resolve hostnames (single fleet fetch) before the confirm gate.
-        resolved = list(system_ids or [])
+        mapping: dict[str, str] = {}
+        missing: list[str] = []
         if hostnames:
             mapping, missing = await resolve_hostnames(client, hostnames)
-            resolved.extend(mapping.values())
-            missing_entries: list[dict[str, Any]] = [
-                {
-                    "system_id": h,
-                    "status": "error",
-                    "error": f"no machine found with hostname {h!r}",
-                }
-                for h in missing
-            ]
-        else:
-            missing_entries = []
+        # Validate hostname-resolved sids BEFORE the confirm gate: a malformed
+        # sid from the fleet listing should surface its validation error
+        # rather than the generic confirm-gate rejection (mirrors the
+        # explicit-system_ids path below).
+        for sid in mapping.values():
+            validate_system_id(sid)
+        # dict.fromkeys preserves first-occurrence order while dropping
+        # duplicates — both for explicit system_ids (caller typed the same
+        # id twice) and for hostname-resolved ids (same hostname in two
+        # input slots, or MAAS returning duplicate hostnames in the fleet
+        # listing). Without this, gather fans out duplicate op-power_* calls
+        # to the same machine.
+        resolved = list(dict.fromkeys([*(system_ids or []), *mapping.values()]))
+        missing_entries: list[dict[str, Any]] = [
+            {
+                "system_id": h,
+                "status": "error",
+                "error": f"no machine found with hostname {h!r}",
+            }
+            for h in missing
+        ]
         # Validate explicitly-given system_ids (not hostname-resolved ones)
         # before the confirm gate so an invalid id surfaces its validation
         # error rather than the generic confirm-gate rejection.

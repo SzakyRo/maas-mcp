@@ -53,8 +53,7 @@ class ClearBootDiskTool:
         system_id: Annotated[
             str | None,
             Field(
-                description="MAAS system_id of the machine. "
-                "Provide this or hostname, exactly one."
+                description="MAAS system_id of the machine. Provide this or hostname, exactly one."
             ),
         ] = None,
         *,
@@ -71,8 +70,10 @@ class ClearBootDiskTool:
     ) -> ClearBootDiskResult:
         system_id = await resolve_system_id(client, system_id, hostname)
         validate_system_id(system_id)
-        if not system_id:
-            raise ValueError("system_id must be a non-empty string")
+        # The redundant `if not system_id` check that used to live here was
+        # dead code: validate_system_id rejects empty strings via the
+        # {1,64} quantifier in _SYSTEM_ID_RE, so by this point system_id
+        # is non-empty by construction.
         if confirm is not True:
             raise ValueError(
                 "clear_boot_disk is confirm-gated even though it cannot "

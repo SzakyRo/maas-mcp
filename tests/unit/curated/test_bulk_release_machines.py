@@ -197,3 +197,26 @@ async def test_confirm_message_includes_actual_ids(maas_client: MaasClient) -> N
             await BulkReleaseMachinesTool().run(
                 maas_client, system_ids=["abc", "def"], confirm=False
             )
+
+
+@pytest.mark.asyncio
+async def test_duplicate_system_ids_collapse_to_single_release(maas_client: MaasClient) -> None:
+    """Caller typing the same system_id twice (or a hostname mapping that
+    collides) must NOT produce two parallel op-release calls — one fan-out
+    per machine, one result entry."""
+    with respx.mock(base_url=maas_client.base_url) as mock:  # type: ignore[attr-defined]
+        route = mock.post("/api/2.0/machines/abc/op-release").mock(
+            return_value=Response(200, json={"system_id": "abc"})
+        )
+        async with maas_client:
+            result = await BulkReleaseMachinesTool().run(
+                maas_client, system_ids=["abc", "abc"], confirm=True
+            )
+    assert route.call_count == 1
+    # Single result entry — not two (the dict.fromkeys collapse).
+    assert len(result) == 1
+    assert result[0] == {
+        "system_id": "abc",
+        "status": "ok",
+        "result": {"system_id": "abc"},
+    }

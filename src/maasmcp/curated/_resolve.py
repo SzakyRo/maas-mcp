@@ -16,7 +16,9 @@ from typing import Any
 from maasmcp.maas.client import MaasClient
 
 
-async def _machine_list(client: MaasClient, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+async def _machine_list(
+    client: MaasClient, params: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     """Fetch the machine collection, normalizing both known response shapes.
 
     MAAS normally returns a bare list; some deployments wrap it as
@@ -85,13 +87,19 @@ async def resolve_hostnames(
     if not hostnames:
         return {}, []
     machines = await _machine_list(client)
-    by_hostname = {
-        m["hostname"]: m["system_id"]
-        for m in machines
-        if isinstance(m, dict)
-        and isinstance(m.get("hostname"), str)
-        and isinstance(m.get("system_id"), str)
-    }
+    # MAAS enforces unique hostnames; if a misbehaving server returns >1
+    # machine with the same hostname, FIRST occurrence wins (setdefault, not
+    # plain dict assignment — a plain `by_hostname[h] = sid` would silently
+    # overwrite and drop the earlier machine from bulk operations).
+    by_hostname: dict[str, str] = {}
+    for m in machines:
+        if not isinstance(m, dict):
+            continue
+        hostname = m.get("hostname")
+        system_id = m.get("system_id")
+        if not (isinstance(hostname, str) and isinstance(system_id, str)):
+            continue
+        by_hostname.setdefault(hostname, system_id)
     mapping = {h: by_hostname[h] for h in hostnames if h in by_hostname}
     missing = [h for h in hostnames if h not in by_hostname]
     return mapping, missing

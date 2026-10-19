@@ -303,3 +303,60 @@ async def test_get_machine_non_hex_system_id_still_resolves(monkeypatch):
             result = await GetMachineTool().run(maas_client, identifier="84t4pa")
     assert route.called
     assert result["system_id"] == "84t4pa"
+
+
+async def test_deploy_machine_refuses_failed_commissioning(monkeypatch):
+    """A machine in 'Failed commissioning' (or 'Broken') status MUST be
+    refused before any op-deploy call. Without the guard, the deploy
+    branch silently falls through and tries to deploy onto a known-bad
+    hardware state."""
+    maas_client = _client(monkeypatch)
+    with respx.mock(base_url=maas_client.base_url, assert_all_called=False) as mock:
+        # Pre-flight GET returns a Failed-commissioning status. No
+        # commission attempt (status not in _NEEDS_COMMISSION_STATUSES),
+        # no deploy attempt (status in _REFUSE_DEPLOY_STATUSES).
+        mock.get("/api/2.0/machines/abc/").mock(
+            return_value=Response(
+                200,
+                json={
+                    "system_id": "abc",
+                    "status_name": "Failed commissioning",
+                    "commissioning_status_name": "Failed",
+                },
+            )
+        )
+        deploy_route = mock.post("/api/2.0/machines/abc/op-deploy").mock(return_value=Response(200))
+        commission_route = mock.post("/api/2.0/machines/abc/op-commission").mock(
+            return_value=Response(200)
+        )
+        async with maas_client:
+            from maasmcp.maas.errors import MCPUpstreamError
+
+            with pytest.raises(MCPUpstreamError, match="refusing to deploy"):
+                await DeployMachineTool().run(
+                    maas_client, system_id="abc", distro="ubuntu/jammy", confirm=True
+                )
+    assert not deploy_route.called
+    assert not commission_route.called
+
+
+async def test_deploy_machine_refuses_broken_status(monkeypatch):
+    """'Broken' is also in _REFUSE_DEPLOY_STATUSES — pinning the broader
+    refused-status coverage."""
+    maas_client = _client(monkeypatch)
+    with respx.mock(base_url=maas_client.base_url, assert_all_called=False) as mock:
+        mock.get("/api/2.0/machines/abc/").mock(
+            return_value=Response(
+                200,
+                json={"system_id": "abc", "status_name": "Broken"},
+            )
+        )
+        deploy_route = mock.post("/api/2.0/machines/abc/op-deploy").mock(return_value=Response(200))
+        async with maas_client:
+            from maasmcp.maas.errors import MCPUpstreamError
+
+            with pytest.raises(MCPUpstreamError, match="Broken"):
+                await DeployMachineTool().run(
+                    maas_client, system_id="abc", distro="ubuntu/jammy", confirm=True
+                )
+    assert not deploy_route.called

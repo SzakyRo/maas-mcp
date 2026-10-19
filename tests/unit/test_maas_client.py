@@ -660,3 +660,33 @@ async def test_403_invalid_token_format_is_not_retried() -> None:
             await client.post("/api/2.0/machines/", json={"hostname": "x"})
     assert exc.value.status_code == 403
     assert route.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_http_base_url_raises_without_opt_in() -> None:
+    """Connecting to an http:// MAAS URL sends OAuth/Bearer credentials in
+    cleartext. Default behavior (allow_insecure=False) MUST refuse to
+    construct the client — the operator must explicitly opt in."""
+    cfg = MaasConfig(base_url="http://maas.example.com/MAAS", api_key="test-key")
+    # Construction succeeds; the refusal happens on __aenter__.
+    client = MaasClient(cfg)
+    with pytest.raises(RuntimeError, match="http://"):
+        await client.__aenter__()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_http_base_url_allowed_with_opt_in() -> None:
+    """With allow_insecure=True, an http:// MAAS URL is accepted (the
+    existing warning is preserved)."""
+    cfg = MaasConfig(
+        base_url="http://maas.example.com/MAAS",
+        api_key="test-key",
+        allow_insecure=True,
+    )
+    respx.get("http://maas.example.com/MAAS/api/2.0/version/").mock(
+        return_value=httpx.Response(200, json={"version": "3.7"})
+    )
+    async with MaasClient(cfg) as client:
+        result = await client.get("/api/2.0/version/")
+    assert result == {"version": "3.7"}

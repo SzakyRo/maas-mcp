@@ -76,6 +76,11 @@ class MaasConfig(BaseSettings):
     token_secret: str | None = Field(default=None, description="OAuth token secret")
     api_version: str = Field(default="2.0")
     verify_tls: bool = Field(default=True)
+    # Set true to allow credentials to travel over plain http://. Default false:
+    # OAuth PLAINTEXT and Bearer tokens are sent in the Authorization header,
+    # which any on-path party can read over http://. Explicitly opt-in only —
+    # e.g. for a MAAS-on-local-network dev box behind a private tunnel.
+    allow_insecure: bool = Field(default=False)
 
     @field_validator("base_url")
     @classmethod
@@ -113,7 +118,9 @@ class MaasConfig(BaseSettings):
             return data
         # If the user already supplied explicit OAuth fields, the api_key
         # is just a leftover bearer value — keep it as Bearer.
-        if any(data.get(f) for f in ("consumer_key", "consumer_secret", "token_key", "token_secret")):
+        if any(
+            data.get(f) for f in ("consumer_key", "consumer_secret", "token_key", "token_secret")
+        ):
             return data
         # MAAS triple parts are alphanumeric (hex-ish). A colon-bearing key
         # with any other character is an opaque Bearer key — treat it as

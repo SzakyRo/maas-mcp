@@ -261,12 +261,21 @@ class MaasClient:
 
     async def __aenter__(self) -> MaasClient:
         if urllib.parse.urlparse(self._cfg.base_url).scheme == "http":
-            # OAuth PLAINTEXT / Bearer credentials travel in the Authorization
-            # header — over plain HTTP they are readable by any on-path party.
+            if not self._cfg.allow_insecure:
+                # OAuth PLAINTEXT / Bearer credentials travel in the
+                # Authorization header — over plain HTTP they are readable by
+                # any on-path party. Refuse by default; the operator must
+                # explicitly set allow_insecure=true to override (e.g. for a
+                # dev box on a trusted local network).
+                raise RuntimeError(
+                    f"MAAS base_url uses http:// ({self._cfg.base_url!r}); "
+                    "credentials would travel in cleartext. Use https://, or "
+                    "set MAASMCP_MAAS__ALLOW_INSECURE=true to override."
+                )
             log.warning(
                 "maas_insecure_base_url",
                 base_url=self._cfg.base_url,
-                hint="MAAS credentials are sent in cleartext; use https://",
+                hint="MAAS credentials are sent in cleartext; MAASMCP_MAAS__ALLOW_INSECURE=true overrides",
             )
         self._client = httpx.AsyncClient(
             base_url=self._cfg.base_url,
@@ -424,12 +433,8 @@ class MaasClient:
                 # Deterministic failures (e.g. MAAS's bare 500 for a Django
                 # DoesNotExist) can't heal under retry — fail fast so
                 # downstream fallbacks run immediately.
-                retrying = (
-                    idempotent and will_retry and not _is_deterministic_500(detail)
-                )
-                self._log_upstream(
-                    method, path, response.status_code, attempt, retrying=retrying
-                )
+                retrying = idempotent and will_retry and not _is_deterministic_500(detail)
+                self._log_upstream(method, path, response.status_code, attempt, retrying=retrying)
                 if not retrying:
                     break
                 await self._sleep_backoff(attempt)
@@ -446,12 +451,8 @@ class MaasClient:
                 )
                 # 401 and session-flavored 403 are safe to retry even for
                 # writes: MAAS rejected the request before any mutation.
-                retrying = will_retry and _is_retryable_auth_error(
-                    response.status_code, detail
-                )
-                self._log_upstream(
-                    method, path, response.status_code, attempt, retrying=retrying
-                )
+                retrying = will_retry and _is_retryable_auth_error(response.status_code, detail)
+                self._log_upstream(method, path, response.status_code, attempt, retrying=retrying)
                 if retrying:
                     last_exc = upstream_exc
                     await self._sleep_backoff(attempt)
